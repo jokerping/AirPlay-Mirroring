@@ -25,29 +25,30 @@ func RunAirPlayServer() error {
 		return err
 	}
 
-	var iface, err2 = net.InterfaceByName("en1")
-	if err2 != nil {
-		//找可用网卡，兼容windows
-		allIface, err := net.Interfaces()
-		if err != nil {
-			return err
-		}
-		for _, inter := range allIface {
-			if inter.Flags%2 != 0 &&
-				inter.HardwareAddr.String() != "" {
-				iface = &inter
-				break
+	var iFace *net.Interface
+	all, err := net.Interfaces()
+	if err != nil {
+		return err
+	}
+	for _, face := range all {
+		addrs, _ := face.Addrs()
+		for _, addr := range addrs {
+			ipNet, isIpNet := addr.(*net.IPNet)
+			if isIpNet && !ipNet.IP.IsLoopback() {
+				if ipNet.IP.To4() != nil {
+					iFace = &face
+				}
 			}
 		}
 	}
 
-	if iface.HardwareAddr.String() == "" {
+	if iFace.HardwareAddr.String() == "" {
 		return errors.New("找不到可用的网卡")
 	}
-	macAddress := strings.ToUpper(iface.HardwareAddr.String())
+	macAddress := strings.ToUpper(iFace.HardwareAddr.String())
 	homekit.Device = homekit.NewAccessory(macAddress, config.Config.DeviceUUID, homekit.AirplayDevice())
 	global.Debug.Printf("Starting %s for device %v", config.Config.DeviceName, homekit.Device)
-	raopName := hex.EncodeToString(iface.HardwareAddr) + "@" + config.Config.DeviceName //按文档说必须是这种格式
+	raopName := hex.EncodeToString(iFace.HardwareAddr) + "@" + config.Config.DeviceName //按文档说必须是这种格式
 	server, err := zeroconf.Register(raopName, "_airplay._tcp", "local.",
 		port, homekit.Device.ToRecords(), nil)
 	if err != nil {
