@@ -21,29 +21,11 @@ func (r *Rstp) Handle(conn *rtsp.Conn, req *rtsp.Request) (*rtsp.Response, error
 		return r.onOptions(req)
 	case rtsp.Get:
 		return r.OnGetWeb(req)
+	case rtsp.Post:
+		return r.OnPostWeb(conn, req)
+
 	}
-	//switch req.Method {
-	//case "GET":
-	//	return r.OnGetWeb(req)
-	//case "POST":
-	//	return r.OnPostWeb(conn, req)
-	//case "SETUP":
-	//	return r.OnSetupWeb(req)
-	//case "GET_PARAMETER":
-	//	return r.OnGetParameterWeb(req)
-	//case "SET_PARAMETER":
-	//	return r.OnSetParameterWeb(req)
-	//case "RECORD":
-	//	return r.OnRecordWeb(req)
-	//case "SETPEERS":
-	//	return r.OnSetPeerWeb(req)
-	//case "SETRATEANCHORTIME":
-	//	return r.OnSetRateAnchorTime(req)
-	//case "FLUSHBUFFERED":
-	//	return r.OnFlushBuffered(req)
-	//case "TEARDOWN":
-	//	return r.OnTeardownWeb(req)
-	//}
+
 	return &rtsp.Response{StatusCode: rtsp.StatusNotImplemented}, nil
 }
 
