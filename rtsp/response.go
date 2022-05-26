@@ -197,7 +197,6 @@ func (res Response) Write(bw *bufio.Writer) error {
 	if err != nil {
 		return err
 	}
-
 	if len(res.Body) != 0 {
 		res.Header["Content-Length"] = HeaderValue{strconv.FormatInt(int64(len(res.Body)), 10)}
 	}

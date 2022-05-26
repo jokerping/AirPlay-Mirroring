@@ -19,6 +19,8 @@ func (r *Rstp) Handle(conn *rtsp.Conn, req *rtsp.Request) (*rtsp.Response, error
 	switch req.Method {
 	case rtsp.Options:
 		return r.onOptions(req)
+	case rtsp.Get:
+		return r.OnGetWeb(req)
 	}
 	//switch req.Method {
 	//case "GET":

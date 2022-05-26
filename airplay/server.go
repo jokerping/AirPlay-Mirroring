@@ -6,7 +6,6 @@ import (
 	"AirPlayServer/handlers"
 	"AirPlayServer/homekit"
 	"AirPlayServer/rtsp"
-	"encoding/hex"
 	"errors"
 	"github.com/grandcat/zeroconf"
 	"net"
@@ -48,15 +47,15 @@ func RunAirPlayServer() error {
 	macAddress := strings.ToUpper(iFace.HardwareAddr.String())
 	homekit.Device = homekit.NewAccessory(macAddress, config.Config.DeviceUUID, homekit.AirplayDevice())
 	global.Debug.Printf("Starting %s for device %v", config.Config.DeviceName, homekit.Device)
-	raopName := hex.EncodeToString(iFace.HardwareAddr) + "@" + config.Config.DeviceName //按文档说必须是这种格式
-	server, err := zeroconf.Register(raopName, "_airplay._tcp", "local.",
+	//raopName := hex.EncodeToString(iFace.HardwareAddr) + "@" + config.Config.DeviceName //按文档说必须是这种格式
+	server, err := zeroconf.Register(config.Config.DeviceName, "_airplay._tcp", "local.",
 		port, homekit.Device.ToRecords(), nil)
 	if err != nil {
 		return err
 	}
 	defer server.Shutdown()
 
-	global.Debug.Println("Service", raopName, "registered on address", address)
+	global.Debug.Println("Service", config.Config.DeviceName, "registered on address", address)
 	var handler = &handlers.Rstp{}
 	err = rtsp.RunRtspServer(handler)
 	if err != nil {

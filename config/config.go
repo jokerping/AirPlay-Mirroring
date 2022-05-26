@@ -23,7 +23,7 @@ var Config = &Configuration{
 	PulseSink:  "",
 	Volume:     -999,
 	DeviceUUID: uuid.NewString(),
-	Port:       ":4567",
+	Port:       ":7100",
 }
 
 func (c *Configuration) Load() {
