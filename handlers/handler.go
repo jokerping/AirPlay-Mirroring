@@ -25,6 +25,8 @@ func (r *Rstp) Handle(conn *rtsp.Conn, req *rtsp.Request) (*rtsp.Response, error
 		return r.OnPostWeb(conn, req)
 	case rtsp.Setup:
 		return r.OnSetupWeb(req)
+	case rtsp.GetParameter:
+		return r.OnGetParameterWeb(req)
 	}
 	return &rtsp.Response{StatusCode: rtsp.StatusNotImplemented}, nil
 }

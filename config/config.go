@@ -23,7 +23,7 @@ type Configuration struct {
 
 var Config = &Configuration{
 	PulseSink:  "",
-	Volume:     -999,
+	Volume:     50.0,
 	DeviceUUID: uuid.NewString(),
 	Port:       ":7100",
 	EventPort:  7200,
