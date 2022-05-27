@@ -15,8 +15,10 @@ type Configuration struct {
 	DeviceUUID   string  `json:"device-uuid"`
 	PulseSink    string  `json:"-"`
 	DeviceName   string  `json:"-"`
-	Port         string  `json:"port"`
+	Port         string  `json:"port"` //服务发现端口号
 	exitsSignals chan os.Signal
+	EventPort    uint64 `json:"event-port"` //事件端口号
+	DataPort     uint64 `json:"data_port"`  //客户端发送视频流的端口号
 }
 
 var Config = &Configuration{
@@ -24,6 +26,8 @@ var Config = &Configuration{
 	Volume:     -999,
 	DeviceUUID: uuid.NewString(),
 	Port:       ":7100",
+	EventPort:  7200,
+	DataPort:   7020,
 }
 
 func (c *Configuration) Load() {
