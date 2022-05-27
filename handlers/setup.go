@@ -46,23 +46,25 @@ type responseStream struct {
 	streamType int    `plist:"type"`     //流媒体类型，同上。此处返回110，屏幕镜像
 }
 
+var handler = &Rstp{}
+
 func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 	//镜像setup,会请求两次，第一次和第二次并不顺序发生
 	if contentType, found := req.Header["Content-Type"]; found && strings.EqualFold(contentType[0], "application/x-apple-binary-plist") {
 		temp := map[string]interface{}{} //总是解析不成功，用个字典存一下，只取关键数据
 		plist.Unmarshal(req.Body, &temp)
 		if temp["eiv"] != nil { //判断是第一次
-			content := setupRequest{
-				eiv:                      temp["eiv"].([]byte),
-				eKey:                     temp["ekey"].([]byte),
-				timingProtocol:           temp["timingProtocol"].(string),
-				timingPort:               temp["timingPort"].(uint64),
-				isScreenMirroringSession: temp["isScreenMirroringSession"].(bool),
-			}
+			//content := setupRequest{
+			//	eiv:                      temp["eiv"].([]byte),
+			//	eKey:                     temp["ekey"].([]byte),
+			//	timingProtocol:           temp["timingProtocol"].(string),
+			//	timingPort:               temp["timingPort"].(uint64),
+			//	isScreenMirroringSession: temp["isScreenMirroringSession"].(bool),
+			//}
 			//构造返回数据
 			responseBody := &setupResponse{
 				eventPort:  config.Config.EventPort,
-				timingPort: content.timingPort,
+				timingPort: config.Config.TimingPort,
 			}
 			body, err := plist.Marshal(*responseBody, plist.AutomaticFormat)
 			if err != nil {
@@ -77,9 +79,16 @@ func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 			arr := temp["streams"].([]interface{})
 			for _, s := range arr {
 				value := s.(map[string]interface{})
+				var streamConnectionID64 int64
+				switch value["streamConnectionID"].(type) {
+				case int64:
+					streamConnectionID64 = value["streamConnectionID"].(int64)
+				case uint64:
+					streamConnectionID64 = int64(value["streamConnectionID"].(uint64))
+				}
 				stream := setupStream{
 					streamType:         value["type"].(uint64),
-					streamConnectionID: value["streamConnectionID"].(int64),
+					streamConnectionID: streamConnectionID64,
 				}
 				resutStreams = append(resutStreams, stream)
 			}
@@ -91,12 +100,19 @@ func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 			streams := []responseStream{
 				stream,
 			}
-			responseBody := &setupResponse2{streams: streams}
+			responseBody := &setupResponse2{
+				streams: streams,
+			}
 			body, err := plist.Marshal(*responseBody, plist.AutomaticFormat)
 			if err != nil {
 				return &rtsp.Response{StatusCode: rtsp.StatusInternalServerError}, err
 			}
 			//TODO 此处要启动监听流媒体服务
+			//启动媒体服务器
+			//err = rtsp.RunRtspServer(handler)
+			//if err != nil {
+			//	return &rtsp.Response{StatusCode: rtsp.StatusInternalServerError}, err
+			//}
 			return &rtsp.Response{StatusCode: rtsp.StatusOK, Header: rtsp.Header{
 				"Content-Type": rtsp.HeaderValue{"application/x-apple-binary-plist"},
 			}, Body: body}, nil

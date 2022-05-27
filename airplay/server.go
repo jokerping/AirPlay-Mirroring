@@ -13,6 +13,8 @@ import (
 	"strings"
 )
 
+var handler = &handlers.Rstp{}
+
 func RunAirPlayServer() error {
 	address := config.Config.Port //服务运行的端口，随便
 	_, portstr, err := net.SplitHostPort(address)
@@ -61,7 +63,7 @@ func RunAirPlayServer() error {
 	defer server.Shutdown()
 
 	global.Debug.Println("Service", config.Config.DeviceName, "registered on address", address)
-	var handler = &handlers.Rstp{}
+
 	err = rtsp.RunRtspServer(handler)
 	if err != nil {
 		return err

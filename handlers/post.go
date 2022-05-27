@@ -11,6 +11,8 @@ func (r *Rstp) OnPostWeb(conn *rtsp.Conn, req *rtsp.Request) (*rtsp.Response, er
 		return r.OnPairVerify(req)
 	case "fp-setup":
 		return r.OnFpSetup(req)
+	case "feedback":
+		return &rtsp.Response{StatusCode: rtsp.StatusOK}, nil //心跳包
 	}
 	return &rtsp.Response{StatusCode: rtsp.StatusNotImplemented}, nil
 }
