@@ -28,9 +28,8 @@ type setupRequest2 struct {
 }
 
 type setupStream struct {
-	streamType         int             `plist:"type"`               //流媒体类型96：实时音频 103：缓冲音频 110：屏幕镜像 120：播放 130：遥控器
-	streamConnectionID int             `plist:"streamConnectionID"` //当前连接的id,需要保存后面会用
-	timestampInfo      []timestampInfo `plist:"timestampInfo"`
+	streamType         uint64 `plist:"type"`               //流媒体类型96：实时音频 103：缓冲音频 110：屏幕镜像 120：播放 130：遥控器
+	streamConnectionID int64  `plist:"streamConnectionID"` //当前连接的id,需要保存后面会用
 }
 
 type timestampInfo struct {
@@ -74,8 +73,17 @@ func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 				"Content-Type": rtsp.HeaderValue{"application/x-apple-binary-plist"},
 			}, Body: body}, nil
 		} else {
-			var content2 setupRequest2
-			plist.Unmarshal(req.Body, &content2)
+			var resutStreams []setupStream
+			arr := temp["streams"].([]interface{})
+			for _, s := range arr {
+				value := s.(map[string]interface{})
+				stream := setupStream{
+					streamType:         value["type"].(uint64),
+					streamConnectionID: value["streamConnectionID"].(int64),
+				}
+				resutStreams = append(resutStreams, stream)
+			}
+			//setupRequest := setupRequest2{streams: resutStreams}
 			stream := responseStream{
 				dataPort:   config.Config.DataPort,
 				streamType: 110,
@@ -88,7 +96,7 @@ func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 			if err != nil {
 				return &rtsp.Response{StatusCode: rtsp.StatusInternalServerError}, err
 			}
-
+			//TODO 此处要启动监听流媒体服务
 			return &rtsp.Response{StatusCode: rtsp.StatusOK, Header: rtsp.Header{
 				"Content-Type": rtsp.HeaderValue{"application/x-apple-binary-plist"},
 			}, Body: body}, nil
