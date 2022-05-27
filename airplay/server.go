@@ -24,18 +24,23 @@ func RunAirPlayServer() error {
 		return err
 	}
 
-	var iFace *net.Interface
-	all, err := net.Interfaces()
+	iFace, err := net.InterfaceByName("en1")
 	if err != nil {
-		return err
-	}
-	for _, face := range all {
-		addrs, _ := face.Addrs()
-		for _, addr := range addrs {
-			ipNet, isIpNet := addr.(*net.IPNet)
-			if isIpNet && !ipNet.IP.IsLoopback() {
-				if ipNet.IP.To4() != nil {
-					iFace = &face
+		all, err := net.Interfaces()
+		if err != nil {
+			return err
+		}
+		for _, face := range all {
+			if iFace == nil {
+				addrs, _ := face.Addrs()
+				for _, addr := range addrs {
+					ipNet, isIpNet := addr.(*net.IPNet)
+					if isIpNet && !ipNet.IP.IsLoopback() {
+						if ipNet.IP.To4() != nil && face.HardwareAddr != nil {
+							iFace = &face
+							break
+						}
+					}
 				}
 			}
 		}

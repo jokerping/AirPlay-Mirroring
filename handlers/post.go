@@ -6,7 +6,9 @@ func (r *Rstp) OnPostWeb(conn *rtsp.Conn, req *rtsp.Request) (*rtsp.Response, er
 
 	switch req.Path {
 	case "pair-setup":
-		return r.OnPairSetup(conn, req)
+		return r.OnPairSetup(req)
+	case "pair-verify":
+		return r.OnPairVerify(req)
 	}
 	return &rtsp.Response{StatusCode: rtsp.StatusNotImplemented}, nil
 }
