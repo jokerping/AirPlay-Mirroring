@@ -139,7 +139,7 @@ func (r *Rstp) OnGetInfo(req *rtsp.Request) (*rtsp.Response, error) {
 		Pk:              []byte(homekit.Device.Pk),
 	}
 
-	if body, err := plist.Marshal(*responseBody, plist.AutomaticFormat); err == nil {
+	if body, err := plist.Marshal(*responseBody, plist.BinaryFormat); err == nil {
 		return &rtsp.Response{StatusCode: rtsp.StatusOK, Header: rtsp.Header{
 			"Content-Type": rtsp.HeaderValue{"application/x-apple-binary-plist"},
 		}, Body: body}, nil

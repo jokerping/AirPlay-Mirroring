@@ -1,6 +1,8 @@
 package handlers
 
-import "AirPlayServer/rtsp"
+import (
+	"AirPlayServer/rtsp"
+)
 
 func (r *Rstp) OnPostWeb(conn *rtsp.Conn, req *rtsp.Request) (*rtsp.Response, error) {
 

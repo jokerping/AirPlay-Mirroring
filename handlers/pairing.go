@@ -40,6 +40,9 @@ func (r *Rstp) OnPairSetup(req *rtsp.Request) (*rtsp.Response, error) {
 
 func (r *Rstp) OnPairVerify(req *rtsp.Request) (*rtsp.Response, error) {
 
+	if edPriKey == nil {
+		return &rtsp.Response{StatusCode: rtsp.StatusBadRequest}, nil
+	}
 	if len(req.Body) < 68 { //这一步必须这么多字节
 		return &rtsp.Response{StatusCode: rtsp.StatusBadRequest}, errors.New("PairVerify 接收数据为空")
 	}

@@ -19,7 +19,7 @@ type Configuration struct {
 	exitsSignals chan os.Signal
 	EventPort    uint64 `json:"event-port"`  //事件端口号
 	DataPort     uint64 `json:"data_port"`   //客户端发送视频流的端口号
-	TimingPort   uint64 `json:"timing-port"` // ntp端口号
+	TimingPort   uint64 `json:"timing-port"` // ntp对时端口号
 }
 
 var Config = &Configuration{
@@ -28,8 +28,8 @@ var Config = &Configuration{
 	DeviceUUID: uuid.NewString(),
 	Port:       ":7100",
 	EventPort:  7200,
-	DataPort:   7120, //尽量不跟mac本身的AirPlay端口重叠
-	TimingPort: 7111,
+	DataPort:   7300, //尽量不跟mac本身的AirPlay端口重叠
+	TimingPort: 7400,
 }
 
 func (c *Configuration) Load() {
