@@ -4,7 +4,6 @@ import (
 	"AirPlayServer/config"
 	"AirPlayServer/media"
 	"AirPlayServer/rtsp"
-	"AirPlayServer/voice"
 	"howett.net/plist"
 	"strings"
 )
@@ -35,13 +34,13 @@ func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 		if temp["eiv"] != nil { //判断是第一次
 			//只取了有用的数据，详细见setup1.plist。每次不太一样，有的数据不知道干吗的
 			rtsp.Session.Eiv = make([]byte, len(temp["eiv"].([]byte)))
-			copy(rtsp.Session.Eiv, temp["eiv"].([]byte)) //解密视频用的iv
+			copy(rtsp.Session.Eiv, temp["eiv"].([]byte)) //解密视频、音频用的iv
 			rtsp.Session.Ekey = make([]byte, len(temp["ekey"].([]byte)))
-			copy(rtsp.Session.Ekey, temp["ekey"].([]byte)) //解密视频用的key
+			copy(rtsp.Session.Ekey, temp["ekey"].([]byte)) //解密视频、音频用的key
 			rtsp.Session.TimePort = temp["timingPort"].(uint64)
 			//启动媒体服务
-			go media.RunServer()
-			go voice.RunServer()
+			go media.RunVideoServer()
+			go media.RunVoiceServer()
 			//TODO 启动事件服务和对时服务
 
 			return &rtsp.Response{StatusCode: rtsp.StatusOK}, nil
@@ -96,7 +95,7 @@ func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 				//接收数据不重要，格式如下见文件setup-voice.plist,此处不需要，就不处理了
 				stream := map[string]uint64{
 					"dataPort":    config.Config.VoicePort,        //服务器接收音频数据的接口
-					"controlPort": config.Config.VoiceControlPort, //控制接口
+					"controlPort": config.Config.VoiceControlPort, //音频重传包会通过这个接口给
 					"type":        voiceType,
 				}
 				streams := [1]map[string]uint64{

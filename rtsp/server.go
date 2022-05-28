@@ -28,9 +28,8 @@ type Server struct {
 	StreamConnectionID int64  //视频流连接ID，用于解密视频流
 	KeyMessage         []byte //用于解码aes-key
 	EcdhShared         []byte //pairing阶段计算出的curve25519 共享密钥，用于解密视频
-	VideoAESKey        []byte //解密视频的key
-	VideoAESIv         []byte
 	TimePort           uint64 //客户端NTP端口，用于对时
+	DesryAesKey        []byte //音视频阶段解密后的key，用于解密音视频的aeskey
 }
 
 type Conn struct {
