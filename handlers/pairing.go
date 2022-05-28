@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"AirPlayServer/global"
 	"AirPlayServer/rtsp"
 	"crypto/aes"
 	"crypto/cipher"
@@ -19,8 +20,6 @@ var privateKey [32]byte         //服务器curve25519算法生成的私钥
 var publicKey [32]byte          // 服务器curve25519算法生成的公钥
 var ecdhTheir [32]byte          //第一次传输过来curve25519公钥
 var blockMode cipher.Stream     //aes 加解密器，由于ctr特性，两次需要使用同一个aes
-var pairVerifyAESKey = "Pair-Verify-AES-Key"
-var pairVerifyAESIV = "Pair-Verify-AES-IV"
 
 func (r *Rstp) OnPairSetup(req *rtsp.Request) (*rtsp.Response, error) {
 	//根据Length 生成指定长度的公钥
@@ -59,6 +58,8 @@ func (r *Rstp) OnPairVerify(req *rtsp.Request) (*rtsp.Response, error) {
 		curve25519.ScalarBaseMult(&publicKey, &privateKey)
 		//使用生成的服务器curve25519私钥作为key得到aes-ctr-128的key
 		ecdhShared, err := curve25519.X25519(privateKey[:], ecdhTheir[:])
+		rtsp.Session.EcdhShared = make([]byte, len(ecdhShared))
+		copy(rtsp.Session.EcdhShared, ecdhShared)
 		if err != nil {
 			return &rtsp.Response{StatusCode: rtsp.StatusNotImplemented}, err
 		}
@@ -73,13 +74,13 @@ func (r *Rstp) OnPairVerify(req *rtsp.Request) (*rtsp.Response, error) {
 		//message, err := aesCtr(edSign)
 		//将32位的ecdhShared 散列成16位ecdhShared作为aes的key使用从而得到128位的aes。
 		//必须这么散列，否则接受不到。使用sha512讲 拼接后的字符串散列，然后截取前16个字符。
-		hash := sha512.Sum512(append([]byte(pairVerifyAESKey), ecdhShared[:]...))
+		hash := sha512.Sum512(append([]byte(global.PairVerifyAESKey), ecdhShared[:]...))
+		iv := sha512.Sum512(append([]byte(global.PairVerifyAESIV), ecdhShared[:]...)) //给到一个iv值，长度等于block的块尺寸，即16byte
 		block, err := aes.NewCipher(hash[:16])
 		if err != nil {
 			return nil, err
 		}
 		//aes ctr模式加密
-		iv := sha512.Sum512(append([]byte(pairVerifyAESIV), ecdhShared[:]...)) //给到一个iv值，长度等于block的块尺寸，即16byte
 		blockMode = cipher.NewCTR(block, iv[:16])
 		message := make([]byte, len(edSign))
 		blockMode.XORKeyStream(message, edSign)
