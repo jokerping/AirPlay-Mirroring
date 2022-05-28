@@ -61,6 +61,7 @@ func handleEventConnection(conn net.Conn) {
 		//if err != nil {
 		//	break
 		//}
+		//global.Debug.Printf("接收数据量%d", len(data))
 	}
 }
 

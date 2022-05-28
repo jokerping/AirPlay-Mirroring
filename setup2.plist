@@ -1,0 +1,36 @@
+<plist version="1.0">
+<dict>
+	<key>streams</key>
+	<array>
+		<dict>
+			<key>type</key>
+			<integer>110</integer>
+			<key>timestampInfo</key>
+			<array>
+				<dict>
+					<key>name</key>
+					<string>SubSu</string>
+				</dict>
+				<dict>
+					<key>name</key>
+					<string>BePxT</string>
+				</dict>
+				<dict>
+					<key>name</key>
+					<string>AfPxT</string>
+				</dict>
+				<dict>
+					<key>name</key>
+					<string>BefEn</string>
+				</dict>
+				<dict>
+					<key>name</key>
+					<string>EmEnc</string>
+				</dict>
+			</array>
+			<key>streamConnectionID</key>
+			<integer>4964383553955644435</integer>
+		</dict>
+	</array>
+</dict>
+</plist>

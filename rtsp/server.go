@@ -30,6 +30,7 @@ type Server struct {
 	EcdhShared         []byte //pairing阶段计算出的curve25519 共享密钥，用于解密视频
 	VideoAESKey        []byte //解密视频的key
 	VideoAESIv         []byte
+	TimePort           uint64 //客户端NTP端口，用于对时
 }
 
 type Conn struct {

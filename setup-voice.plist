@@ -1,0 +1,48 @@
+<plist version="1.0">
+  <dict>
+    <key>streams</key>
+    <array>
+      <dict>
+        <key>latencyMax</key>
+        <integer>3750</integer>
+        <key>redundantAudio</key>
+        <integer>2</integer>
+        <key>latencyMin</key>
+        <integer>3750</integer>
+        <key>ct</key>
+        <integer>8</integer>
+        <key>spf</key>
+        <integer>480</integer>
+        <key>controlPort</key>
+        <integer>63658</integer>
+        <key>usingScreen</key>
+        <true/>
+        <key>audioFormat</key>
+        <integer>16777216</integer>
+        <key>type</key>
+        <integer>96</integer>
+      </dict>
+    </array>
+  </dict>
+</plist>
+
+<!--
+delayMax：音频延迟
+redundantAudio：通过有损网络传输传输音频帧时的冗余
+delayMin：音频延迟
+ct：压缩type
+spf：每包帧数
+controlPort：用于请求重发丢包的端口
+usingScreen：布尔值，用于指示流媒体的类型（视频+音频或仅音频）
+audioFormat：音频格式
+0x0：PCM
+0x40000: ALAC (96 AppleLossless, 96 352 0 16 40 10 14 2 255 0 0 44100)
+0x400000: AAC (96 mpeg4-generic/44100/2, 96 mode=AAC-main; constantDuration=1024)
+0x1000000: AAC_ELD (96 mpeg4-generic/44100/2, 96 mode=AAC-eld; constantDuration=480)
+type：流媒体类型
+96：实时音频
+103：缓冲音频
+110：屏幕镜像
+120：播放
+130：遥控器
+-->

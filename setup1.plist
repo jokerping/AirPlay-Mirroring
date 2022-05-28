@@ -1,0 +1,46 @@
+<plist version="1.0">
+<dict>
+	<key>et</key>
+	<integer>32</integer>
+	<key>eiv</key>
+	<data>
+		Bp5tRB8BOW/MWVJSGzALLw==
+	</data>
+	<key>timingProtocol</key>
+	<string>NTP</string>
+	<key>sessionUUID</key>
+	<string>43C10532-7CBC-419E-9BB3-528F7D6F9AE0</string>
+	<key>osName</key>
+	<string>iPhone OS</string>
+	<key>osBuildVersion</key>
+	<string>16A404</string>
+	<key>sourceVersion</key>
+	<string>371.4.7</string>
+	<key>timingPort</key>
+	<integer>60373</integer>
+	<key>isScreenMirroringSession</key>
+	<true/>
+	<key>osVersion</key>
+	<string>12.0.1</string>
+	<key>ekey</key>
+	<data>
+		RlBMWQECAQAAAAA8AAAAALFuVD0C1qvRjZI5wtJY4v0AAAAQd5dKdzn2dNJ2ysNpS4VjnfmFHlRqEnXFqUeXzEtMDLIdF/5Y
+	</data>
+	<key>deviceID</key>
+	<string>DC:0C:5C:B7:D6:DA</string>
+	<key>model</key>
+	<string>iPhone9,1</string>
+	<key>name</key>
+	 <string>xxx iPhone</string>
+	<key>macAddress</key>
+	<string>DC:0C:5C:B7:D6:D8</string>
+</dict>
+</plist>
+
+<!--
+ekey：AES 密钥（我们必须保存此数据，因为稍后我们将需要它）
+eiv：AES IV（我们必须保存这些数据，因为我们稍后会需要它）
+TimingPort：用于心跳的端口（您可以在响应中更改）
+TimingProtocol：用于发送计时数据的协议
+isScreenMirroringSession：布尔值，用于指示流的类型（仅限视频或音频）
+-->
