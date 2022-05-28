@@ -20,12 +20,10 @@ import (
 	"unsafe"
 )
 
-type media struct {
-}
-
-var e = &media{}
+var stop = false
 
 func RunServer() (err error) {
+	stop = false
 	port := ":" + strconv.FormatInt(int64(config.Config.DataPort), 10)
 	l, err := net.Listen("tcp", port)
 	if err != nil {
@@ -35,6 +33,9 @@ func RunServer() (err error) {
 	defer l.Close()
 
 	for {
+		if stop {
+			break
+		}
 		// listen for an incoming connection.
 		conn, err := l.Accept()
 		if err != nil {
@@ -46,10 +47,18 @@ func RunServer() (err error) {
 	return nil
 }
 
+func CloseServer() {
+	stop = true
+	//TODO 停止处理视频流，如关闭视频等操作。
+}
+
 func handleEventConnection(conn net.Conn) {
 	defer conn.Close()
 	// Handle connections in a new goroutine.
 	for {
+		if stop {
+			break
+		}
 		var buffer [4096]byte
 		_, err := conn.Read(buffer[:])
 		if err != nil {

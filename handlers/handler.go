@@ -31,6 +31,9 @@ func (r *Rstp) Handle(conn *rtsp.Conn, req *rtsp.Request) (*rtsp.Response, error
 		return r.OnRecordWeb(req)
 	case rtsp.SetParameter:
 		return r.OnSetParameterWeb(req)
+	case rtsp.Teardown:
+		return r.OnTeardownWeb(req)
+
 	}
 	return &rtsp.Response{StatusCode: rtsp.StatusNotImplemented}, nil
 }

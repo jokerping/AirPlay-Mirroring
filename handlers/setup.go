@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"AirPlayServer/config"
+	"AirPlayServer/media"
 	"AirPlayServer/rtsp"
+	"AirPlayServer/voice"
 	"howett.net/plist"
 	"strings"
 )
@@ -36,72 +38,85 @@ func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 			copy(rtsp.Session.Eiv, temp["eiv"].([]byte)) //解密视频用的iv
 			rtsp.Session.Ekey = make([]byte, len(temp["ekey"].([]byte)))
 			copy(rtsp.Session.Ekey, temp["ekey"].([]byte)) //解密视频用的key
-			rtsp.Session.TimePort = temp["TimingPort"].(uint64)
+			rtsp.Session.TimePort = temp["timingPort"].(uint64)
+			//启动媒体服务
+			go media.RunServer()
+			go voice.RunServer()
+			//TODO 启动事件服务和对时服务
+
 			return &rtsp.Response{StatusCode: rtsp.StatusOK}, nil
-		} else if temp["type"] == videoType { //第二次视频setup
-			//只取了有用的，详见setup2.plist
+		} else {
 			var resutStreams []setupStream
 			arr := temp["streams"].([]interface{})
-			for _, s := range arr {
-				value := s.(map[string]interface{})
-				var streamConnectionID64 int64
-				switch value["streamConnectionID"].(type) {
-				case int64:
-					streamConnectionID64 = value["streamConnectionID"].(int64)
-				case uint64:
-					streamConnectionID64 = int64(value["streamConnectionID"].(uint64))
+			value := arr[0].(map[string]interface{})
+			if value["type"].(uint64) == videoType {
+				//第二次视频setup，如果仅声音的AirPlay 并不会有第二次，而是两次/command 请求，本项目没有做处理（设置不同flag、特征值、不同的功能请求都是不同的，
+				//AirPlay协议是个非常负责的协议）
+				//只取了有用的，详见setup2.plist
+				for _, s := range arr {
+					value := s.(map[string]interface{})
+					var streamConnectionID64 int64
+					switch value["streamConnectionID"].(type) {
+					case int64:
+						streamConnectionID64 = value["streamConnectionID"].(int64)
+					case uint64:
+						streamConnectionID64 = int64(value["streamConnectionID"].(uint64))
+					}
+					stream := setupStream{
+						streamType:         value["type"].(uint64),
+						streamConnectionID: streamConnectionID64,
+					}
+					resutStreams = append(resutStreams, stream)
 				}
-				stream := setupStream{
-					streamType:         value["type"].(uint64),
-					streamConnectionID: streamConnectionID64,
+				rtsp.Session.StreamConnectionID = resutStreams[0].streamConnectionID
+				stream := map[string]uint64{
+					"dataPort": config.Config.DataPort,
+					"type":     videoType,
 				}
-				resutStreams = append(resutStreams, stream)
-			}
-			rtsp.Session.StreamConnectionID = resutStreams[0].streamConnectionID
-			stream := map[string]uint64{
-				"dataPort": config.Config.DataPort,
-				"type":     videoType,
-			}
 
-			streams := [1]map[string]uint64{
-				stream,
-			}
-			responseBody := map[string]interface{}{
-				"streams":    streams[:],
-				"eventPort":  config.Config.EventPort,
-				"timingPort": config.Config.TimingPort,
-			}
+				streams := [1]map[string]uint64{
+					stream,
+				}
+				responseBody := map[string]interface{}{
+					"streams":    streams[:],
+					"eventPort":  config.Config.EventPort,
+					"timingPort": config.Config.TimingPort,
+				}
 
-			body, err := plist.MarshalIndent(&responseBody, plist.AutomaticFormat, "\t")
-			if err != nil {
-				return &rtsp.Response{StatusCode: rtsp.StatusInternalServerError}, err
-			}
+				body, err := plist.MarshalIndent(&responseBody, plist.AutomaticFormat, "\t")
+				if err != nil {
+					return &rtsp.Response{StatusCode: rtsp.StatusInternalServerError}, err
+				}
 
-			return &rtsp.Response{StatusCode: rtsp.StatusOK, Header: rtsp.Header{
-				"Content-Type": rtsp.HeaderValue{"application/x-apple-binary-plist"},
-			}, Body: body}, nil
-		} else if temp["type"] == voiceType { //镜像时播放声音或者只声音时
-			//接收数据不重要，格式如下见文件setup-voice.plist,此处不需要，就不处理了
-			stream := map[string]uint64{
-				"dataPort":    config.Config.VoicePort,        //服务器接收音频数据的接口
-				"controlPort": config.Config.VoiceControlPort, //控制接口
-				"type":        voiceType,
-			}
-			streams := [1]map[string]uint64{
-				stream,
-			}
-			responseBody := map[string]interface{}{
-				"streams":    streams[:],
-				"timingPort": config.Config.TimingPort, //同样用于NTP配对，本项目没有做NTP对时，使用的是标准NTP协议，相见文件ntp
-			}
-			body, err := plist.MarshalIndent(&responseBody, plist.AutomaticFormat, "\t")
-			if err != nil {
-				return &rtsp.Response{StatusCode: rtsp.StatusInternalServerError}, err
-			}
+				return &rtsp.Response{StatusCode: rtsp.StatusOK, Header: rtsp.Header{
+					"Content-Type": rtsp.HeaderValue{"application/x-apple-binary-plist"},
+				}, Body: body}, nil
+			} else if value["type"].(uint64) == voiceType {
+				//镜像时播放声音会有第三次
+				//接收数据不重要，格式如下见文件setup-voice.plist,此处不需要，就不处理了
+				stream := map[string]uint64{
+					"dataPort":    config.Config.VoicePort,        //服务器接收音频数据的接口
+					"controlPort": config.Config.VoiceControlPort, //控制接口
+					"type":        voiceType,
+				}
+				streams := [1]map[string]uint64{
+					stream,
+				}
+				responseBody := map[string]interface{}{
+					"streams":    streams[:],
+					"timingPort": config.Config.TimingPort, //同样用于NTP配对，本项目没有做NTP对时，使用的是标准NTP协议，相见文件ntp
+				}
+				body, err := plist.MarshalIndent(&responseBody, plist.AutomaticFormat, "\t")
+				if err != nil {
+					return &rtsp.Response{StatusCode: rtsp.StatusInternalServerError}, err
+				}
 
-			return &rtsp.Response{StatusCode: rtsp.StatusOK, Header: rtsp.Header{
-				"Content-Type": rtsp.HeaderValue{"application/x-apple-binary-plist"},
-			}, Body: body}, nil
+				return &rtsp.Response{StatusCode: rtsp.StatusOK, Header: rtsp.Header{
+					"Content-Type": rtsp.HeaderValue{"application/x-apple-binary-plist"},
+				}, Body: body}, nil
+			}
+			return &rtsp.Response{StatusCode: rtsp.StatusInternalServerError}, nil
+
 		}
 		return &rtsp.Response{StatusCode: rtsp.StatusInternalServerError}, nil
 	}

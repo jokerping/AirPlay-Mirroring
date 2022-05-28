@@ -4,7 +4,6 @@ import (
 	"AirPlayServer/airplay"
 	"AirPlayServer/config"
 	"AirPlayServer/global"
-	"AirPlayServer/media"
 	"flag"
 	"log"
 	"os"
@@ -20,7 +19,7 @@ func main() {
 	if *debug {
 		global.Debug = log.New(os.Stderr, "DEBUG ", log.LstdFlags)
 	}
-	go media.RunServer()
+
 	err := airplay.RunAirPlayServer()
 	if err != nil {
 		log.Fatal(err)
