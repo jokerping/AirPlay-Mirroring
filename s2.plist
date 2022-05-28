@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>eventPort</key>
+		<integer>7220</integer>
+		<key>streams</key>
+		<array>
+			<dict>
+				<key>dataPort</key>
+				<integer>7300</integer>
+				<key>type</key>
+				<integer>110</integer>
+			</dict>
+		</array>
+		<key>timingPort</key>
+		<integer>7320</integer>
+	</dict>
+</plist>

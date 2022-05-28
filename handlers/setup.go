@@ -7,18 +7,9 @@ import (
 	"strings"
 )
 
-//第一次setup请求头
-type setupRequest struct {
-	eiv                      []byte `plist:"eiv"`                      //AES iv  需要保存会在后面使用
-	eKey                     []byte `plist:"ekey"`                     //AES 密钥 需要保存会在后面使用
-	timingProtocol           string `plist:"timingProtocol"`           //用于发送计时数据的协议
-	timingPort               uint64 `plist:"timingPort"`               //心跳的端口,可以在第一次setup返回中更改
-	isScreenMirroringSession bool   `plist:"isScreenMirroringSession"` //用于指示流的类型（仅限视频或音频）
-}
-
 //第2次setup请求头
 type setupRequest2 struct {
-	streams []setupStream `plist:"streams"`
+	streams []setupStream `plist:"streams"` //虽然是数组但是每次只有1个
 }
 
 type setupStream struct {
@@ -26,21 +17,16 @@ type setupStream struct {
 	streamConnectionID int64  `plist:"streamConnectionID"` //当前连接的id,需要保存后面会用
 }
 
-var handler = &Rstp{}
-
 func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 	//镜像setup,会请求两次，第一次和第二次并不顺序发生
 	if contentType, found := req.Header["Content-Type"]; found && strings.EqualFold(contentType[0], "application/x-apple-binary-plist") {
 		temp := map[string]interface{}{} //总是解析不成功，用个字典存一下，只取关键数据
 		plist.Unmarshal(req.Body, &temp)
 		if temp["eiv"] != nil { //判断是第一次
-			//content := setupRequest{
-			//	eiv:                      temp["eiv"].([]byte),
-			//	eKey:                     temp["ekey"].([]byte),
-			//	timingProtocol:           temp["timingProtocol"].(string),
-			//	timingPort:               temp["timingPort"].(uint64),
-			//	isScreenMirroringSession: temp["isScreenMirroringSession"].(bool),
-			//}
+			rtsp.Session.Eiv = make([]byte, len(temp["eiv"].([]byte)))
+			copy(rtsp.Session.Eiv, temp["eiv"].([]byte)) //解密视频用的iv
+			rtsp.Session.Ekey = make([]byte, len(temp["ekey"].([]byte)))
+			copy(rtsp.Session.Ekey, temp["ekey"].([]byte)) //解密视频用的key
 			return &rtsp.Response{StatusCode: rtsp.StatusOK}, nil
 		} else {
 			var resutStreams []setupStream
@@ -60,20 +46,7 @@ func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 				}
 				resutStreams = append(resutStreams, stream)
 			}
-			//setupRequest := setupRequest2{streams: resutStreams}
-			//stream := responseStream{
-			//	dataPort:   7120,
-			//	streamType: 110,
-			//}
-			//streams := []responseStream{
-			//	stream,
-			//}
-			//responseBody := &setupResponse2{
-			//	streams:    streams,
-			//	timingPort: 7320,
-			//	eventPort:  7220,
-			//}
-
+			rtsp.Session.StreamConnectionID = resutStreams[0].streamConnectionID
 			stream := map[string]uint64{
 				"dataPort": config.Config.DataPort,
 				"type":     110,
@@ -95,7 +68,7 @@ func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 
 			return &rtsp.Response{StatusCode: rtsp.StatusOK, Header: rtsp.Header{
 				"Content-Type": rtsp.HeaderValue{"application/x-apple-binary-plist"},
-			}, Body: []byte(body)}, nil
+			}, Body: body}, nil
 		}
 	}
 	return &rtsp.Response{StatusCode: rtsp.StatusInternalServerError}, nil

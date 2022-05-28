@@ -21,6 +21,8 @@ func (r *Rstp) OnFpSetup(req *rtsp.Request) (*rtsp.Response, error) {
 		bytes := replyMessage[req.Body[14]]
 		return &rtsp.Response{StatusCode: rtsp.StatusOK, Body: bytes[:]}, nil
 	} else if len(req.Body) == 164 && req.Body[4] == 0x03 {
+		rtsp.Session.KeyMessage = make([]byte, len(req.Body))
+		copy(rtsp.Session.KeyMessage, req.Body)
 		/*
 			客户端发送 164 字节请求,第 5 个字节必须是 0x03。
 			这164字节需要保存，在后面的请求中会使用到。

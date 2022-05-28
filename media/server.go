@@ -1,10 +1,20 @@
 package media
 
+/*
+#include "playfair/playfair.c"
+#include "playfair/omg_hax.c"
+#include "playfair/modified_md5.c"
+#include "playfair/sap_hash.c"
+#include "playfair/hand_garble.c"
+*/
+import "C"
 import (
 	"AirPlayServer/config"
 	"AirPlayServer/global"
+	"AirPlayServer/rtsp"
 	"net"
 	"strconv"
+	"unsafe"
 )
 
 type media struct {
@@ -28,7 +38,6 @@ func RunServer() (err error) {
 			global.Debug.Println("Error accepting: ", err.Error())
 			return err
 		}
-
 		go handleEventConnection(conn)
 	}
 	return nil
@@ -39,11 +48,27 @@ func handleEventConnection(conn net.Conn) {
 	// Handle connections in a new goroutine.
 	for {
 		var buffer [4096]byte
-		count, err := conn.Read(buffer[:])
+		_, err := conn.Read(buffer[:])
 		if err != nil {
 			global.Debug.Printf("Event error : %v", err)
 			break
 		}
-		global.Debug.Printf("接收到数据:%d", count)
+		decryption(buffer[:])
+
+	}
+}
+
+var desryAesKey []byte //解密后的aes key
+
+func decryption(buffer []byte) {
+	if desryAesKey == nil {
+		desryAesKey = make([]byte, 16)
+		//1.解密AES密钥，用到fpsetup（CSeq=5）接收到的keymessage
+		C.playfair_decrypt(
+			(*C.uchar)(unsafe.Pointer(&rtsp.Session.KeyMessage[0])),
+			(*C.uchar)(unsafe.Pointer(&rtsp.Session.Ekey[0])),
+			(*C.uchar)(unsafe.Pointer(&desryAesKey[0])))
+
+		global.Debug.Printf("解码前:%s,解码后%s", rtsp.Session.Ekey, desryAesKey)
 	}
 }

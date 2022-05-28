@@ -20,9 +20,13 @@ type Handler interface {
 }
 
 type Server struct {
-	h  Handler
-	bw *bufio.Writer
-	br *bufio.Reader
+	h                  Handler
+	bw                 *bufio.Writer
+	br                 *bufio.Reader
+	Eiv                []byte
+	Ekey               []byte // setup阶段传输的key，用于解密视频流
+	StreamConnectionID int64  //视频流连接ID，用于解密视频流
+	KeyMessage         []byte //用于解码aes-key
 }
 
 type Conn struct {
@@ -41,7 +45,7 @@ func (c *Conn) SetNetConn(conn net.Conn) {
 	c.c = conn
 }
 func RunRtspServer(handlers Handler) (err error) {
-	s := &Server{
+	Session = &Server{
 		h: handlers,
 	}
 	l, err := net.Listen("tcp4", config.Config.Port)
@@ -56,8 +60,8 @@ func RunRtspServer(handlers Handler) (err error) {
 			rConn := &Conn{
 				c: conn,
 			}
-			s.h.OnConnOpen(rConn)
-			go s.handleRstpConnection(rConn)
+			Session.h.OnConnOpen(rConn)
+			go Session.handleRstpConnection(rConn)
 		}
 	}
 	return err
@@ -107,3 +111,5 @@ func parseRequest(br *bufio.Reader) (*Request, error) {
 	}
 	return &req, nil
 }
+
+var Session *Server
