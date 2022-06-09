@@ -19,7 +19,6 @@ func main() {
 	if *debug {
 		global.Debug = log.New(os.Stderr, "DEBUG ", log.LstdFlags)
 	}
-
 	err := airplay.RunAirPlayServer()
 	if err != nil {
 		log.Fatal(err)
