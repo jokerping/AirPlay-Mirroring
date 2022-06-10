@@ -40,6 +40,8 @@ type videoSession struct {
 }
 
 var session *videoSession
+var nextDecryptCount = 0
+var og [16]byte
 
 func RunVideoServer() (err error) {
 	session = &videoSession{}
@@ -77,9 +79,11 @@ func CloseVideoServer() {
 
 func handlVideoConnection(conn net.Conn) {
 	all := make([]byte, 0)
+	initAes()
 	defer func() {
+		//FIXME 偷懒在这写，实际上可以一边接收一边写。需要改，这样占用更多内存
 		conn.Close()
-		file, _ := os.Create("xx.h264")
+		file, _ := os.Create("test.h264")
 		file.Write(all)
 		file.Sync()
 		file.Close()
@@ -89,39 +93,48 @@ func handlVideoConnection(conn net.Conn) {
 			break
 		}
 		header := make([]byte, 128)
-		_, err := io.ReadFull(conn, header)
-		if err != nil {
-			break
+		ret, err := io.ReadFull(conn, header[:4])
+		if ret < 4 {
+			continue
 		}
-		mirrorHeader, err := newMirroringHeader(header)
-		if session.pts == 0 {
-			session.pts = mirrorHeader.PayloadPts
-		}
-		if session.WidthSource == 0 {
-			session.WidthSource = mirrorHeader.WidthSource
-		}
-		if session.HeightSource == 0 {
-			session.HeightSource = mirrorHeader.HeightSource
-		}
-		if err == nil {
-			//创建数据缓冲区
-			payload := make([]byte, mirrorHeader.PayloadSize)
-			_, err = io.ReadFull(conn, payload)
+		if (header[0] == 80 && header[1] == 79 && header[2] == 83 && header[3] == 84) || (header[0] == 71 && header[1] == 69 && header[2] == 84) {
+			global.Debug.Println("别的请求")
+			// Request is POST or GET (skip)
+		} else {
+			_, err = io.ReadFull(conn, header[4:])
 			if err != nil {
 				break
 			}
-			if mirrorHeader.PayloadType == 0 {
-				//TODO 处理视频
-				video, _ := decryptionVideo(payload)
-				h264, err := processVideo(video, session.SpsPps, session.pts, session.WidthSource, session.HeightSource)
-				if err == nil {
-					all = append(all, h264.Data...)
-				} else {
-					global.Debug.Println(err)
+			mirrorHeader, err := newMirroringHeader(header)
+			if session.pts == 0 {
+				session.pts = mirrorHeader.PayloadPts
+			}
+			if session.WidthSource == 0 {
+				session.WidthSource = mirrorHeader.WidthSource
+			}
+			if session.HeightSource == 0 {
+				session.HeightSource = mirrorHeader.HeightSource
+			}
+			if err == nil {
+				//创建数据缓冲区
+				payload := make([]byte, mirrorHeader.PayloadSize)
+				_, err = io.ReadFull(conn, payload)
+				if err != nil {
+					break
 				}
-			} else if mirrorHeader.PayloadType == 1 {
-				spsPps := processSpsPps(payload)
-				session.SpsPps = spsPps
+				if mirrorHeader.PayloadType == 0 {
+					//TODO 处理视频
+					video, _ := decryptionVideo(payload)
+					h264, err := processVideo(video, session.SpsPps, session.pts, session.WidthSource, session.HeightSource)
+					if err == nil {
+						all = append(all, h264.Data...)
+					} else {
+						global.Debug.Println(err)
+					}
+				} else if mirrorHeader.PayloadType == 1 {
+					spsPps := processSpsPps(payload)
+					session.SpsPps = spsPps
+				}
 			}
 		}
 	}
@@ -195,7 +208,7 @@ func processSpsPps(payload []byte) []byte {
 	picture := make([]byte, h264.LengthOfPps)
 	copy(picture, payload[h264.LengthOfSps+11:h264.LengthOfSps+11+h264.LengthOfPps])
 	h264.PictureParameterSet = picture
-	if int(h264.LengthOfSps+h264.LengthOfPps) < 102400 {
+	if int(h264.LengthOfSps)+int(h264.LengthOfPps) < 102400 {
 		spsPpsLen := int(h264.LengthOfSps + h264.LengthOfPps + 8)
 		spsPps := make([]byte, spsPpsLen)
 		spsPps[0] = 0
@@ -249,35 +262,43 @@ func processVideo(payload []byte, spsPps []byte, pts uint64, widthSource uint32,
 	return H264Data{}, errors.New("获取h264错误")
 }
 
-func byteTofloat32(b []byte) float32 {
-	t1 := binary.LittleEndian.Uint32(b)
-	return math.Float32frombits(t1)
+func decryptionVideo(videoData []byte) (data []byte, err error) {
+	//解密视频
+	if nextDecryptCount > 0 {
+		for i := 0; i < nextDecryptCount; i++ {
+			videoData[i] = videoData[i] ^ og[(16-nextDecryptCount)+i]
+		}
+	}
+	encryptlen := ((len(videoData) - nextDecryptCount) / 16) * 16
+	blockMode.XORKeyStream(videoData[nextDecryptCount:], videoData[nextDecryptCount:nextDecryptCount+encryptlen])
+	restlen := (len(videoData) - nextDecryptCount) % 16
+	reststart := len(videoData) - restlen
+	nextDecryptCount = 0
+	if restlen > 0 {
+		og = [16]byte{}
+		copy(og[:restlen], videoData[reststart:reststart+restlen])
+		blockMode.XORKeyStream(og[:], og[:16])
+		copy(videoData[reststart:reststart+restlen], og[:restlen])
+		nextDecryptCount = 16 - restlen
+	}
+	output := make([]byte, len(videoData))
+	copy(output, videoData)
+	return output, nil
 }
 
-func decryptionVideo(buffer []byte) (data []byte, err error) {
-	if rtsp.Session.DesryAesKey == nil {
-		desryAesKey := desryAesKey()
-		//2.将解密的desryAesKey和pairing阶段计算出的curve25519 共享密钥进行hash得到eaesHash,方法同pair阶段
-		eaesHash := sha512.Sum512(append(desryAesKey, rtsp.Session.EcdhShared[:]...))
-		//3.使用eaesHash前16个字节与（“AirPlayStreamKey”+setup阶段获得的streamConnectionId）构成的字符串hash方法同上。得到keyHash
-		sID := make([]byte, 8)
-		binary.LittleEndian.PutUint64(sID, uint64(rtsp.Session.StreamConnectionID))
-		k1 := append([]byte(global.AirPlayStreamKey), sID...)
-		keyHash := sha512.Sum512(append(k1, eaesHash[:16]...))
-		//4.同样方法与“AirPlayStreamIV”+streamConnectionId hash得到ivHash
-		i1 := append([]byte(global.AirPlayStreamIV), sID...)
-		ivHash := sha512.Sum512(append(i1, eaesHash[:16]...))
-		//5.取keyHash和IVhash的前16字节作为key和iv执行aes-ctr-128 解密视频流，视频流是avcc格式的H264裸流
-		//创建解码器
-		block, err := aes.NewCipher(keyHash[:16])
-		if err != nil {
-			return nil, err
-		}
-		//aes ctr模式加密
-		blockMode = cipher.NewCTR(block, ivHash[:16])
-	}
-	//解密视频
-	message := make([]byte, len(buffer))
-	blockMode.XORKeyStream(message, buffer)
-	return message, nil
+func initAes() {
+	desryAesKey := desryAesKey()
+	//2.将解密的desryAesKey和pairing阶段计算出的curve25519 共享密钥进行hash得到eaesHash,方法同pair阶段
+	eaesHash := sha512.Sum512(append(desryAesKey, rtsp.Session.EcdhShared[:]...))
+	//3.使用eaesHash前16个字节与（“AirPlayStreamKey”+setup阶段获得的streamConnectionId）构成的字符串hash方法同上。得到keyHash
+	k1 := global.AirPlayStreamKey + strconv.FormatUint(rtsp.Session.StreamConnectionID, 10)
+	keyHash := sha512.Sum512(append([]byte(k1), eaesHash[:16]...))
+	//4.同样方法与“AirPlayStreamIV”+streamConnectionId hash得到ivHash
+	i1 := global.AirPlayStreamIV + strconv.FormatUint(rtsp.Session.StreamConnectionID, 10)
+	ivHash := sha512.Sum512(append([]byte(i1), eaesHash[:16]...))
+	//5.取keyHash和IVhash的前16字节作为key和iv执行aes-ctr-128 解密视频流，视频流是avcc格式的H264裸流
+	//创建解码器
+	block, _ := aes.NewCipher(keyHash[:16])
+	//aes ctr模式加密
+	blockMode = cipher.NewCTR(block, ivHash[:16])
 }

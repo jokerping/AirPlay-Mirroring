@@ -15,7 +15,7 @@ type setupRequest2 struct {
 
 type setupStream struct {
 	streamType         uint64 `plist:"type"`               //流媒体类型96：实时音频 103：缓冲音频 110：屏幕镜像 120：播放 130：遥控器
-	streamConnectionID int64  `plist:"streamConnectionID"` //当前连接的id,需要保存后面会用
+	streamConnectionID uint64 `plist:"streamConnectionID"` //当前连接的id,需要保存后面会用
 }
 
 const (
@@ -54,12 +54,12 @@ func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 				//只取了有用的，详见setup2.plist
 				for _, s := range arr {
 					value := s.(map[string]interface{})
-					var streamConnectionID64 int64
-					switch value["streamConnectionID"].(type) {
+					var streamConnectionID64 uint64
+					switch value["streamConnectionID"].(type) { //这里要注意，streamConnectionID要是uint64
 					case int64:
-						streamConnectionID64 = value["streamConnectionID"].(int64)
+						streamConnectionID64 = uint64(value["streamConnectionID"].(int64))
 					case uint64:
-						streamConnectionID64 = int64(value["streamConnectionID"].(uint64))
+						streamConnectionID64 = value["streamConnectionID"].(uint64)
 					}
 					stream := setupStream{
 						streamType:         value["type"].(uint64),
