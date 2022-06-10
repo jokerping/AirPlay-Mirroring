@@ -13,6 +13,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"os"
 	"strconv"
 )
 
@@ -75,12 +76,14 @@ func CloseVideoServer() {
 }
 
 func handlVideoConnection(conn net.Conn) {
-	
+	all := make([]byte, 0)
 	defer func() {
 		conn.Close()
+		file, _ := os.Create("xx.h264")
+		file.Write(all)
+		file.Sync()
+		file.Close()
 	}()
-	//nalStartCode := []byte{0x00, 0x00, 0x00, 0x01}
-	//var spsPpsLen uint16
 	for { //承载协议是apple自定义的，承载内容为H264的裸流
 		if stopVideo {
 			break
@@ -109,11 +112,13 @@ func handlVideoConnection(conn net.Conn) {
 			}
 			if mirrorHeader.PayloadType == 0 {
 				//TODO 处理视频
-				//video, _ := decryptionVideo(payload)
-				//h264, err := processVideo(video, session.SpsPps, session.pts, session.WidthSource, session.HeightSource)
-				//if err == nil {
-				//
-				//}
+				video, _ := decryptionVideo(payload)
+				h264, err := processVideo(video, session.SpsPps, session.pts, session.WidthSource, session.HeightSource)
+				if err == nil {
+					all = append(all, h264.Data...)
+				} else {
+					global.Debug.Println(err)
+				}
 			} else if mirrorHeader.PayloadType == 1 {
 				spsPps := processSpsPps(payload)
 				session.SpsPps = spsPps
@@ -211,15 +216,15 @@ func processSpsPps(payload []byte) []byte {
 func processVideo(payload []byte, spsPps []byte, pts uint64, widthSource uint32, heightSource uint32) (H264Data, error) {
 	naluSize := 0
 	for naluSize < len(payload) {
-		ncLen := int((payload[naluSize+3] & 0xFF) | ((payload[naluSize+2] & 0xFF) << 8) | ((payload[naluSize+1] & 0xFF) << 16) | ((payload[naluSize] & 0xFF) << 24))
+		ncLen := binary.BigEndian.Uint32(payload[naluSize : naluSize+4])
 		if ncLen > 0 {
 			payload[naluSize] = 0
 			payload[naluSize+1] = 0
 			payload[naluSize+2] = 0
 			payload[naluSize+3] = 1
-			naluSize += ncLen + 4
+			naluSize += int(ncLen) + 4
 		}
-		if len(payload)-ncLen > 4 {
+		if len(payload)-int(ncLen) > 4 {
 			return H264Data{}, errors.New("获取h264错误")
 		}
 	}
