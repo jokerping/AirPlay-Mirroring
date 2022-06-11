@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"AirPlayServer/media"
+	"AirPlayServer/ntp"
 	"AirPlayServer/rtsp"
 	"howett.net/plist"
 )
@@ -18,6 +19,7 @@ func (r *Rstp) OnTeardownWeb(req *rtsp.Request) (*rtsp.Response, error) {
 		switch stream["type"].(uint64) {
 		case videoType:
 			media.CloseVideoServer()
+			ntp.CloseVideoServer()
 		case voiceType:
 			media.CloseVoiceServer()
 		}

@@ -3,6 +3,7 @@ package media
 import (
 	"AirPlayServer/config"
 	"AirPlayServer/global"
+	"AirPlayServer/ntp"
 	"AirPlayServer/rtsp"
 	"bytes"
 	"crypto/aes"
@@ -11,7 +12,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"math"
 	"net"
 	"os"
 	"strconv"
@@ -46,7 +46,7 @@ var og [16]byte
 func RunVideoServer() (err error) {
 	session = &videoSession{}
 	stopVideo = false
-	port := ":" + strconv.FormatInt(int64(config.Config.DataPort), 10)
+	port := ":" + strconv.FormatUint(config.Config.DataPort, 10)
 	l, err := net.Listen("tcp", port)
 	if err != nil {
 		return err
@@ -57,10 +57,7 @@ func RunVideoServer() (err error) {
 		rtsp.Session.DesryAesKey = nil
 		session = nil
 	}()
-	for {
-		if stopVideo {
-			break
-		}
+	for stopVideo == false {
 		// listen for an incoming connection.
 		conn, err := l.Accept()
 		if err != nil {
@@ -106,13 +103,11 @@ func handlVideoConnection(conn net.Conn) {
 				break
 			}
 			mirrorHeader, err := newMirroringHeader(header)
-			if session.pts == 0 {
-				session.pts = mirrorHeader.PayloadPts
-			}
-			if session.WidthSource == 0 {
+
+			if mirrorHeader.WidthSource > 0 {
 				session.WidthSource = mirrorHeader.WidthSource
 			}
-			if session.HeightSource == 0 {
+			if mirrorHeader.HeightSource > 0 {
 				session.HeightSource = mirrorHeader.HeightSource
 			}
 			if err == nil {
@@ -123,9 +118,10 @@ func handlVideoConnection(conn net.Conn) {
 					break
 				}
 				if mirrorHeader.PayloadType == 0 {
+
 					//TODO 处理视频
 					video, _ := decryptionVideo(payload)
-					h264, err := processVideo(video, session.SpsPps, session.pts, session.WidthSource, session.HeightSource)
+					h264, err := processVideo(video, session.SpsPps, mirrorHeader.PayloadPts, session.WidthSource, session.HeightSource)
 					if err == nil {
 						all = append(all, h264.Data...)
 					} else {
@@ -161,7 +157,9 @@ func newMirroringHeader(header []byte) (mirroringHeader, error) {
 		if err != nil {
 			return mirroringHeader{}, err
 		}
-		h.PayloadPts = h.ntpToPts()
+		ptsRemote := h.ntpToPts()
+		pts := int64(ptsRemote) - ntp.Server.SyncOffset
+		h.PayloadPts = uint64(pts)
 	}
 	if h.PayloadType == 1 {
 		r = bytes.NewReader(header[40:])
@@ -188,7 +186,9 @@ func newMirroringHeader(header []byte) (mirroringHeader, error) {
 
 func (h *mirroringHeader) ntpToPts() uint64 {
 	ntp := h.PayloadNtp
-	return (((ntp >> 32) & 0xffffffff) * 1000000) + ((ntp & 0xffffffff) * 1000 * 1000 / math.MaxInt32)
+	sec := (ntp >> 32) & 0xffffffff
+	frac := ntp & 0xffffffff
+	return (sec * 100_0000) + ((frac * 100_0000) >> 32)
 }
 
 func processSpsPps(payload []byte) []byte {

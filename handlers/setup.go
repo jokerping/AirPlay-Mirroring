@@ -3,6 +3,7 @@ package handlers
 import (
 	"AirPlayServer/config"
 	"AirPlayServer/media"
+	"AirPlayServer/ntp"
 	"AirPlayServer/rtsp"
 	"howett.net/plist"
 	"strings"
@@ -41,7 +42,7 @@ func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 			//启动媒体服务
 			go media.RunVideoServer()
 			go media.RunVoiceServer()
-			//TODO 启动事件服务和对时服务
+			//TODO 启动事件服务
 
 			return &rtsp.Response{StatusCode: rtsp.StatusOK}, nil
 		} else {
@@ -86,7 +87,7 @@ func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 				if err != nil {
 					return &rtsp.Response{StatusCode: rtsp.StatusInternalServerError}, err
 				}
-
+				go ntp.RunServer()
 				return &rtsp.Response{StatusCode: rtsp.StatusOK, Header: rtsp.Header{
 					"Content-Type": rtsp.HeaderValue{"application/x-apple-binary-plist"},
 				}, Body: body}, nil

@@ -25,10 +25,7 @@ func RunVoiceServer() (err error) {
 	}
 	global.Debug.Println("启动事件服务器")
 	defer l.Close()
-	for {
-		if stopVoice {
-			break
-		}
+	for stopVoice == false {
 		handlVoiceConnection(l)
 	}
 	return err

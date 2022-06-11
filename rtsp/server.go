@@ -5,6 +5,7 @@ import (
 	"AirPlayServer/global"
 	"bufio"
 	"net"
+	"strings"
 )
 
 const (
@@ -20,9 +21,12 @@ type Handler interface {
 }
 
 type Server struct {
-	h                  Handler
-	bw                 *bufio.Writer
-	br                 *bufio.Reader
+	h  Handler
+	bw *bufio.Writer
+	br *bufio.Reader
+}
+
+type RtspSession struct {
 	Eiv                []byte
 	Ekey               []byte // setup阶段传输的key，用于解密视频流
 	StreamConnectionID uint64 //视频流连接ID，用于解密视频流
@@ -30,6 +34,8 @@ type Server struct {
 	EcdhShared         []byte //pairing阶段计算出的curve25519 共享密钥，用于解密视频
 	TimePort           uint64 //客户端NTP端口，用于对时
 	DesryAesKey        []byte //音视频阶段解密后的key，用于解密音视频的aeskey
+	RomteIP            string //连接的IP
+	LocalIp            string //本机IP
 }
 
 type Conn struct {
@@ -48,7 +54,7 @@ func (c *Conn) SetNetConn(conn net.Conn) {
 	c.c = conn
 }
 func RunRtspServer(handlers Handler) (err error) {
-	Session = &Server{
+	server = &Server{
 		h: handlers,
 	}
 	l, err := net.Listen("tcp4", config.Config.Port)
@@ -63,8 +69,8 @@ func RunRtspServer(handlers Handler) (err error) {
 			rConn := &Conn{
 				c: conn,
 			}
-			Session.h.OnConnOpen(rConn)
-			go Session.handleRstpConnection(rConn)
+			server.h.OnConnOpen(rConn)
+			go server.handleRstpConnection(rConn)
 		}
 	}
 	return err
@@ -72,7 +78,11 @@ func RunRtspServer(handlers Handler) (err error) {
 
 func (s Server) handleRstpConnection(conn *Conn) {
 	defer conn.Close()
-
+	ips := conn.NetConn().RemoteAddr().String()
+	ip := strings.Split(ips, ":")[0]
+	lips := conn.NetConn().LocalAddr().String()
+	lip := strings.Split(lips, ":")[0]
+	Session = &RtspSession{RomteIP: ip, LocalIp: lip}
 	s.br = bufio.NewReaderSize(conn.NetConn(), serverConnReadBufferSize)
 	s.bw = bufio.NewWriterSize(conn.NetConn(), serverConnWriteBufferSize)
 
@@ -115,4 +125,5 @@ func parseRequest(br *bufio.Reader) (*Request, error) {
 	return &req, nil
 }
 
-var Session *Server
+var server *Server
+var Session *RtspSession
