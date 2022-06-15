@@ -41,7 +41,6 @@ func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 			rtsp.Session.TimePort = temp["timingPort"].(uint64)
 			//启动媒体服务
 			go media.RunVideoServer()
-			go media.RunVoiceServer()
 			//TODO 启动事件服务
 
 			return &rtsp.Response{StatusCode: rtsp.StatusOK}, nil

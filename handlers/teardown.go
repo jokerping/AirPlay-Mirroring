@@ -20,8 +20,6 @@ func (r *Rstp) OnTeardownWeb(req *rtsp.Request) (*rtsp.Response, error) {
 		case videoType:
 			media.CloseVideoServer()
 			ntp.CloseNTPServer()
-		case voiceType:
-			media.CloseVoiceServer()
 		}
 	}
 	return &rtsp.Response{StatusCode: rtsp.StatusOK}, nil
