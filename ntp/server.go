@@ -34,20 +34,22 @@ func RunServer() {
 			LocalAddress: rtsp.Session.LocalIp,
 			Port:         int(rtsp.Session.TimePort),
 			LocalPort:    int(config.Config.TimingPort)}
-		response, _ := ntp.QueryWithOptions(rtsp.Session.RomteIP, options)
-		Server.dataIdx = (Server.dataIdx + 1) % ntpDataCount
-		Server.data[Server.dataIdx].offset = int64(response.ClockOffset)
-		Server.data[Server.dataIdx].rtt = int64(response.RTT)
-		copy(dataSorted[:], Server.data[:])
-		sort.Slice(dataSorted[:], func(i, j int) bool {
-			return dataSorted[i].rtt < dataSorted[j].rtt
-		})
-		Server.SyncOffset = dataSorted[0].offset
-		<-timeTicker.C
+		response, err := ntp.QueryWithOptions(rtsp.Session.RomteIP, options)
+		if err == nil {
+			Server.dataIdx = (Server.dataIdx + 1) % ntpDataCount
+			Server.data[Server.dataIdx].offset = int64(response.ClockOffset)
+			Server.data[Server.dataIdx].rtt = int64(response.RTT)
+			copy(dataSorted[:], Server.data[:])
+			sort.Slice(dataSorted[:], func(i, j int) bool {
+				return dataSorted[i].rtt < dataSorted[j].rtt
+			})
+			Server.SyncOffset = dataSorted[0].offset
+			<-timeTicker.C
+		}
 	}
 }
 
-func CloseVideoServer() {
+func CloseNTPServer() {
 	stopNtp = true
 	timeTicker.Stop()
 }

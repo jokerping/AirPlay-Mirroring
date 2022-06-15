@@ -3,7 +3,7 @@ package media
 import (
 	"AirPlayServer/config"
 	"AirPlayServer/global"
-	"AirPlayServer/ntp"
+	"AirPlayServer/lib"
 	"AirPlayServer/rtsp"
 	"bytes"
 	"crypto/aes"
@@ -13,7 +13,6 @@ import (
 	"errors"
 	"io"
 	"net"
-	"os"
 	"strconv"
 )
 
@@ -75,15 +74,15 @@ func CloseVideoServer() {
 }
 
 func handlVideoConnection(conn net.Conn) {
-	all := make([]byte, 0)
+	//all := make([]byte, 0)
 	initAes()
 	defer func() {
 		//FIXME 偷懒在这写，实际上可以一边接收一边写。需要改，这样占用更多内存
 		conn.Close()
-		file, _ := os.Create("test.h264")
-		file.Write(all)
-		file.Sync()
-		file.Close()
+		//file, _ := os.Create("test.h264")
+		//file.Write(all)
+		//file.Sync()
+		//file.Close()
 	}()
 	for { //承载协议是apple自定义的，承载内容为H264的裸流
 		if stopVideo {
@@ -118,12 +117,12 @@ func handlVideoConnection(conn net.Conn) {
 					break
 				}
 				if mirrorHeader.PayloadType == 0 {
-
 					//TODO 处理视频
 					video, _ := decryptionVideo(payload)
 					h264, err := processVideo(video, session.SpsPps, mirrorHeader.PayloadPts, session.WidthSource, session.HeightSource)
 					if err == nil {
-						all = append(all, h264.Data...)
+						PlayVideo(h264)
+						//all = append(all, h264.Data...)
 					} else {
 						global.Debug.Println(err)
 					}
@@ -158,8 +157,10 @@ func newMirroringHeader(header []byte) (mirroringHeader, error) {
 			return mirroringHeader{}, err
 		}
 		ptsRemote := h.ntpToPts()
-		pts := int64(ptsRemote) - ntp.Server.SyncOffset
-		h.PayloadPts = uint64(pts)
+		//不设置NTP修正感觉更准一点，这里没有搞清楚
+		//pts := int64(ptsRemote) - ntp.Server.SyncOffset
+		//h.PayloadPts = uint64(pts)
+		h.PayloadPts = ptsRemote
 	}
 	if h.PayloadType == 1 {
 		r = bytes.NewReader(header[40:])
@@ -287,7 +288,7 @@ func decryptionVideo(videoData []byte) (data []byte, err error) {
 }
 
 func initAes() {
-	desryAesKey := desryAesKey()
+	desryAesKey := lib.DesryAesKey()
 	//2.将解密的desryAesKey和pairing阶段计算出的curve25519 共享密钥进行hash得到eaesHash,方法同pair阶段
 	eaesHash := sha512.Sum512(append(desryAesKey, rtsp.Session.EcdhShared[:]...))
 	//3.使用eaesHash前16个字节与（“AirPlayStreamKey”+setup阶段获得的streamConnectionId）构成的字符串hash方法同上。得到keyHash

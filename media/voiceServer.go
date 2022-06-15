@@ -3,6 +3,7 @@ package media
 import (
 	"AirPlayServer/config"
 	"AirPlayServer/global"
+	"AirPlayServer/lib"
 	"AirPlayServer/rtsp"
 	"crypto/aes"
 	"crypto/cipher"
@@ -52,7 +53,7 @@ func handlVoiceConnection(conn *net.UDPConn) {
 func decryption(buffer []byte) (data []byte, err error) {
 	// 资料显示{0x0, 0x68, 0x34, 0x0}为没有音频数据
 	if rtsp.Session.DesryAesKey == nil {
-		desryAesKey()
+		lib.DesryAesKey()
 	}
 	//创建解码器
 	keyHash := sha512.Sum512(append(rtsp.Session.DesryAesKey, rtsp.Session.EcdhShared...))

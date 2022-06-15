@@ -8,7 +8,7 @@
 //
 // This approach grew out of a go-nuts post by Michael Hofmann:
 // https://groups.google.com/forum/?fromgroups#!topic/golang-nuts/FlcdMU5fkLQ
-package ntp
+package lib
 
 import (
 	"crypto/rand"

@@ -1,4 +1,4 @@
-package media
+package lib
 
 /*
 #include "playfair/playfair.c"
@@ -13,7 +13,7 @@ import (
 	"unsafe"
 )
 
-func desryAesKey() []byte {
+func DesryAesKey() []byte {
 	desryAesKey := make([]byte, 16)
 	//1.解密AES密钥，用到fpsetup（CSeq=5）接收到的keymessage
 	C.playfair_decrypt(
